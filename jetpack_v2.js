@@ -2067,16 +2067,16 @@ window.draw = function() {
 
 function drawStartScreen() {
   fill(C_TEXT_MAIN); textAlign(CENTER, CENTER);
-  textSize(48); text("JETPACK COMMANDO: BERLIN FALL", width / 2, height / 2 - 120); 
-  textSize(20); text("The Final Assault", width / 2, height / 2 - 70);
+  textSize(48); text("FLAPPY ADOLF", width / 2, height / 2 - 120); 
+  textSize(20); text("Based on true events when Fuhrer had to poop.", width / 2, height / 2 - 70);
 
   textSize(18); fill(C_TEXT_ACCENT);
   text("PILOT: " + window.playerName, width / 2, height / 2 + 20);
 
   fill(C_TEXT_MAIN); textSize(16);
-  text("Use [SPACE] or JUMP button for jetpack thrust", width / 2, height / 2 + 70);
+  text("Use [SPACE] or JUMP button for ass thrust", width / 2, height / 2 + 70);
   text("Use [LEFT MOUSE] or SHOOT button to fire", width / 2, height / 2 + 95);
-  text("Survive the onslaught. Defeat enemy command.", width / 2, height / 2 + 120);
+  text("Survive the nasty enemies of the Reich. Get to poop.", width / 2, height / 2 + 120);
 }
 
 function drawGameOverScreen() {
