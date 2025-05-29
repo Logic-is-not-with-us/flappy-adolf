@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jetpack Jumper</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.5/lib/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/addons/p5.sound.min.js"></script>
+    <script src="https://unpkg.com/p5.collide2d"></script> <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        /* General WW2-era palette and typography */
+        :root {
+            --color-bg-dark: #2c2f33; /* Deep charcoal */
+            --color-bg-medium: #3a3e42; /* Medium grey */
+            --color-military-green: #4b5320; /* Olive Drab */
+            --color-khaki: #b5a770; /* Faded Khaki */
+            --color-distressed-white: #e0e0e0; /* Off-white */
+            --color-blood-red: #b22222; /* Darker red for accents */
+            --color-dark-metal: #4a4a4a; /* Dark metal */
+            --color-light-metal: #8a8a8a; /* Light metal */
+            --color-panel-border: #202020; /* Very dark border */
+            --color-gold-coin: #b8860b; /* Darker gold */
+            --color-metal-grey: #696969; /* Dim gray */
+            --color-text-main: var(--color-distressed-white);
+            --color-text-accent: var(--color-khaki);
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Crucial: Prevent all scrolling on HTML and Body */
+            overscroll-behavior: none; /* Further prevent bounce scrolling */
+            height: 100%; /* Ensure body takes full height */
+            width: 100%; /* Ensure body takes full width */
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Center the canvas and buttons horizontally */
+            justify-content: center; /* Center content vertically too */
+            background-color: var(--color-bg-dark); /* Use WW2 themed background */
+            color: var(--color-text-main); /* Use WW2 themed text color */
+            font-family: "Inter", sans-serif; /* Use Inter font */
+            -webkit-touch-callout: none; /* Disable callout on long press */
+            -webkit-user-select: none;    /* Disable text selection */
+            user-select: none;            /* Standard disable text selection */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        /* p5.js canvas styling */
+        canvas {
+            display: block; /* Remove extra space below canvas */
+            border-radius: 4px; /* Less rounded for industrial feel */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4); /* Less glowing, more defined shadow */
+            max-width: 100%; /* Ensure canvas is responsive */
+            height: auto; /* Maintain aspect ratio */
+            border: 2px solid var(--color-panel-border); /* Stronger, darker border */
+        }
+
+        /* General button styling */
+        .btn {
+            @apply px-7 py-3 rounded-md font-bold text-lg uppercase tracking-wider transition-all duration-200 ease-in-out; /* Sharper corners, uppercase */
+            font-family: 'Oswald', sans-serif; /* Button text in Oswald */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 3px 6px rgba(0, 0, 0, 0.3); /* Inset for pressed look */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--color-panel-border);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px); /* Slight lift on hover */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.4); /* Deeper shadow on hover */
+        }
+
+        .btn-primary {
+            background-color: var(--color-military-green);
+            color: var(--color-distressed-white);
+            border-color: #383d1c;
+        }
+        .btn-primary:hover {
+            background-color: #5d682a;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-metal-grey);
+            color: var(--color-distressed-white);
+            border-color: #555555;
+        }
+        .btn-secondary:hover {
+            background-color: #7a7a7a;
+        }
+
+        .btn-danger {
+            background-color: var(--color-blood-red);
+            color: var(--color-distressed-white);
+            border-color: #6d0000;
+        }
+        .btn-danger:hover {
+            background-color: #a00000;
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            @apply fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50;
+        }
+
+        .modal-content {
+            background-color: var(--color-bg-medium);
+            @apply p-8 rounded-lg shadow-xl max-w-md w-11/12 text-center;
+            border: 3px solid var(--color-panel-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: none; /* Remove sleek fade-in */
+        }
+
+        /* Modal headings */
+        .modal-content h2 {
+            font-family: 'Oswald', sans-serif;
+            @apply text-3xl font-bold uppercase tracking-wide mb-5;
+            color: var(--color-khaki);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .modal-content p {
+            font-family: 'Merriweather', serif;
+            @apply text-base text-gray-300 mb-6;
+        }
+
+        /* Scoreboard specific styling */
+        #scoreboard ul {
+            @apply list-none p-0 m-0;
+        }
+
+        #scoreboard li {
+            @apply flex justify-between items-center py-2 px-4 my-2 rounded-sm; /* Less rounded */
+            background-color: var(--color-bg-dark);
+            border: 1px dashed #555; /* Dashed border for old document feel */
+            font-size: 1rem;
+            font-family: 'Merriweather', serif;
+            color: var(--color-distressed-white);
+        }
+
+        #scoreboard li:last-child {
+            margin-bottom: 0;
+        }
+
+        #scoreboard li .rank {
+            font-family: 'Oswald', sans-serif;
+            @apply font-bold text-khaki; /* Accent color */
+            width: 30px;
+            text-align: left;
+        }
+
+        #scoreboard li .player-name {
+            @apply flex-grow text-left ml-4;
+            color: var(--color-distressed-white);
+        }
+
+        #scoreboard li .score-value {
+            font-family: 'Oswald', sans-serif;
+            @apply font-bold; /* Use a slightly muted green */
+            color: #8fbc8f; /* Darker Sea Green */
+            width: 80px;
+            text-align: right;
+        }
+
+        #scoreboard li .score-date {
+            @apply text-gray-400 text-xs ml-4;
+            width: 130px;
+            text-align: right;
+        }
+
+        /* Player name input styling */
+        #playerNameInput input {
+            background-color: var(--color-bg-dark);
+            color: var(--color-distressed-white);
+            @apply w-full p-3 rounded-sm border-2 border-gray-600 focus:border-khaki text-base;
+            font-family: 'Merriweather', serif;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        #nameInputField::placeholder {
+            color: #888;
+        }
+
+        /* Game specific text on start/game over screens */
+        .game-title {
+            font-family: 'Oswald', sans-serif;
+            @apply text-6xl font-black uppercase tracking-wider mb-6;
+            color: var(--color-khaki);
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.7);
+        }
+        .game-subtitle {
+            font-family: 'Merriweather', serif;
+            @apply text-2xl mb-4;
+            color: var(--color-distressed-white);
+        }
+        .game-instructions {
+            font-family: 'Merriweather', serif;
+            @apply text-lg text-gray-300;
+        }
+        .high-score-display {
+            font-family: 'Oswald', sans-serif;
+            @apply text-xl font-bold;
+            color: var(--color-gold-coin);
+        }
+
+        /* Mobile Controls Styling (WW2 Era Specific) */
+        #in-game-controls {
+            @apply fixed bottom-4 w-full flex justify-between px-4 z-40;
+            max-width: 800px; /* Constrain to game width */
+            pointer-events: none; /* Allow clicks to pass through by default */
+        }
+
+        #in-game-controls button {
+            pointer-events: auto; /* Enable clicks on buttons */
+            @apply rounded-full flex items-center justify-center text-white font-bold uppercase;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: transform 0.1s ease-out;
+        }
+
+        #in-game-controls button:active {
+            transform: scale(0.95);
+        }
+
+        #jumpButton {
+            @apply w-24 h-24 text-4xl; /* Larger, primary color */
+            background-color: var(--color-military-green);
+        }
+
+        #shootButton {
+            @apply w-20 h-20 text-3xl; /* Slightly smaller, secondary color */
+            background-color: var(--color-metal-grey);
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 640px) {
+            #jumpButton {
+                @apply w-20 h-20 text-3xl; /* Slightly smaller on very small screens */
+            }
+            #shootButton {
+                @apply w-16 h-16 text-2xl;
+            }
+            #in-game-controls {
+                @apply px-2;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="relative flex-shrink-0">
+        </div>
+
+    <div id="main-menu-buttons" class="flex flex-col sm:flex-row gap-5 mt-8" style="display: none;">
+        <button id="startButton" class="btn btn-primary">
+            <i class="fas fa-plane mr-2"></i> Start Mission
+        </button>
+        <button id="viewScoresButton" class="btn btn-secondary">
+            <i class="fas fa-clipboard-list mr-2"></i> View Records
+        </button>
+    </div>
+
+    <div id="game-over-buttons" class="flex flex-col sm:flex-row gap-5 mt-8" style="display: none;">
+        <button id="retryButton" class="btn btn-primary">
+            <i class="fas fa-redo mr-2"></i> Re-deploy
+        </button>
+        <button id="mainMenuButton" class="btn btn-secondary">
+            <i class="fas fa-house mr-2"></i> Command Center
+        </button>
+    </div>
+
+    <div id="scoreboard" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Combat Records</h2>
+            <ul id="highScoresList" class="mb-6">
+                </ul>
+            <button id="closeScoreboardButton" class="btn btn-danger">
+                <i class="fas fa-times mr-2"></i> Close Dossier
+            </button>
+        </div>
+    </div>
+
+    <div id="playerNameInput" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Identify Yourself, Soldier!</h2>
+            <p class="mb-4">Enter your codename to log your performance.</p>
+            <input type="text" id="nameInputField" placeholder="Your Codename" maxlength="15" class="mb-4">
+            <button id="saveNameButton" class="btn btn-primary">
+                <i class="fas fa-id-badge mr-2"></i> Enlist
+            </button>
+            <button id="deleteNameButton" class="btn btn-danger mt-3" style="display: none;">
+                <i class="fas fa-trash mr-2"></i> Delete Codename
+            </button>
+        </div>
+    </div>
+
+    <div id="in-game-controls" class="fixed bottom-4 w-full flex justify-between px-4 z-40" style="display: none;">
+        <button id="shootButton">
+            <i class="fas fa-crosshairs"></i>
+        </button>
+        <button id="jumpButton">
+            <i class="fas fa-rocket"></i>
+        </button>
+    </div>
+
+    <script type="module" src="jetpack_v2.js"></script>
+
+    <script>
+        // Get references to UI elements
+        const startButton = document.getElementById('startButton');
+        const viewScoresButton = document.getElementById('viewScoresButton');
+        const retryButton = document.getElementById('retryButton');
+        const mainMenuButton = document.getElementById('mainMenuButton');
+        const mainMenuButtonsDiv = document.getElementById('main-menu-buttons');
+        const gameOverButtonsDiv = document.getElementById('game-over-buttons');
+        const scoreboard = document.getElementById('scoreboard');
+        const closeScoreboardButton = document.getElementById('closeScoreboardButton');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const nameInputField = document.getElementById('nameInputField');
+        const saveNameButton = document.getElementById('saveNameButton');
+        const deleteNameButton = document.getElementById('deleteNameButton'); // New: Get reference to delete button
+
+        // New mobile control buttons
+        const inGameControlsDiv = document.getElementById('in-game-controls');
+        const jumpButton = document.getElementById('jumpButton');
+        const shootButton = document.getElementById('shootButton');
+
+        // --- UI Visibility Control Functions (Exposed to window for p5.js to call) ---
+        window.showMainMenuButtons = function(show) {
+            mainMenuButtonsDiv.style.display = show ? 'flex' : 'none';
+            // Only update input value if showing the main menu and it's not the name input modal itself
+            if (show && playerNameInput.style.display === 'none') {
+                 nameInputField.value = window.playerName; // Update input value
+            }
+        };
+
+        window.showGameOverButtons = function(show) {
+            gameOverButtonsDiv.style.display = show ? 'flex' : 'none';
+        };
+
+        window.showScoreboard = function(show) {
+            if (show) {
+                scoreboard.style.display = 'flex'; // Use flex for centering
+                if (typeof window.displayHighScores !== 'undefined') {
+                    window.displayHighScores(); // Call p5.js function to populate scores
+                }
+            } else {
+                scoreboard.style.display = 'none';
+            }
+        };
+
+        window.showNameInput = function(show) {
+            console.log("DEBUG: showNameInput called with:", show); // DEBUG LOG
+            if (show) {
+                playerNameInput.style.display = 'flex'; // This should make it visible
+                nameInputField.value = window.playerName; // Pre-fill with current name
+                nameInputField.focus(); // Focus the input field
+                console.log("DEBUG: playerNameInput display set to flex."); // DEBUG LOG
+
+                // Conditionally show/hide delete button
+                if (window.playerName && window.playerName !== "Recruit" && window.playerName !== "Player") {
+                    deleteNameButton.style.display = 'inline-block'; // Show if a custom name exists
+                } else {
+                    deleteNameButton.style.display = 'none'; // Hide if default or empty
+                }
+
+            } else {
+                playerNameInput.style.display = 'none';
+                console.log("DEBUG: playerNameInput display set to none."); // DEBUG LOG
+            }
+        };
+
+        // New function to control in-game controls visibility
+        window.showInGameControls = function(show) {
+            inGameControlsDiv.style.display = show ? 'flex' : 'none';
+        };
+
+        // --- Event Listeners for Buttons ---
+        startButton.addEventListener('click', () => {
+            if (window.currentScreen === "START") {
+                window.currentScreen = "GAME";
+                if (typeof window.resetGameValues !== 'undefined') {
+                    window.resetGameValues(); // Reset game state in p5.js
+                }
+            }
+            startButton.blur(); // Remove focus
+        });
+
+        viewScoresButton.addEventListener('click', () => {
+            if (window.currentScreen === "START") {
+                window.currentScreen = "SCOREBOARD";
+                window.showScoreboard(true);
+            }
+            viewScoresButton.blur(); // Remove focus
+        });
+
+        retryButton.addEventListener('click', () => {
+            if (window.currentScreen === "GAME_OVER") {
+                window.currentScreen = "GAME";
+                if (typeof window.resetGameValues !== 'undefined') {
+                    window.resetGameValues(); // Reset game state in p5.js
+                }
+            }
+            retryButton.blur(); // Remove focus
+        });
+
+        mainMenuButton.addEventListener('click', () => {
+            if (window.currentScreen === "GAME_OVER" || window.currentScreen === "SCOREBOARD") {
+                window.currentScreen = "START";
+                if (typeof window.resetGameValues !== 'undefined') {
+                    window.resetGameValues(); // Reset game state in p5.js
+                }
+                window.showScoreboard(false); // Ensure scoreboard is hidden
+            }
+            mainMenuButton.blur(); // Remove focus
+        });
+
+        closeScoreboardButton.addEventListener('click', () => {
+            window.showScoreboard(false);
+            closeScoreboardButton.blur(); // Remove focus
+            // If coming from game over, stay on game over screen
+            // Otherwise, go back to start screen
+            if (window.currentScreen !== "GAME_OVER") {
+                window.currentScreen = "START";
+            }
+        });
+
+        saveNameButton.addEventListener('click', () => {
+            const newName = nameInputField.value.trim();
+            if (newName) {
+                if (typeof window.savePlayerName !== 'undefined') {
+                    window.savePlayerName(newName);
+                }
+                window.showNameInput(false); // Hide input after saving
+            } else {
+                // Optionally, show a message to the user that name cannot be empty
+                console.warn("Player name cannot be empty.");
+            }
+            saveNameButton.blur(); // Remove focus
+        });
+
+        // New: Event listener for the delete name button
+        deleteNameButton.addEventListener('click', () => {
+            if (typeof window.deletePlayerName !== 'undefined') {
+                window.deletePlayerName();
+            }
+            window.showNameInput(false); // Hide input after deleting
+            deleteNameButton.blur(); // Remove focus
+        });
+
+        // Allow pressing Enter key to save name when input field is focused
+        nameInputField.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                saveNameButton.click(); // Trigger save button click
+            }
+        });
+
+        // --- Mobile Control Event Listeners ---
+        jumpButton.addEventListener('touchstart', (event) => {
+            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            window.setPlayerFlyingState(true);
+            window.triggerJumpSound();
+        }, { passive: false });
+        jumpButton.addEventListener('touchend', (event) => {
+            event.preventDefault();
+            window.stopPlayerFlying();
+        }, { passive: false });
+        // Also listen for mouse events for desktop testing
+        jumpButton.addEventListener('mousedown', () => {
+            window.setPlayerFlyingState(true);
+        });
+        jumpButton.addEventListener('mouseup', () => {
+            window.stopPlayerFlying();
+        });
+        jumpButton.addEventListener('mouseleave', () => { // If mouse leaves while pressed
+            window.stopPlayerFlying();
+        });
+
+
+        shootButton.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            window.triggerPlayerShoot();
+        }, { passive: false });
+        shootButton.addEventListener('mousedown', () => {
+            window.triggerPlayerShoot();
+        });
+
+
+        // --- Prevent default browser scrolling and touch behaviors ---
+        window.addEventListener('keydown', (event) => {
+            // Prevent spacebar from scrolling the page
+            if (event.key === ' ') {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        // Prevent touch scrolling and zoom on the entire document body
+        document.body.addEventListener('touchstart', (event) => {
+            // Only prevent if the target is NOT one of our buttons
+            if (event.target !== jumpButton && event.target !== shootButton) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+        document.body.addEventListener('touchmove', (event) => {
+            // Only prevent if the target is NOT one of our buttons
+            if (event.target !== jumpButton && event.target !== shootButton) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+        window.addEventListener('wheel', (event) => {
+            event.preventDefault(); // Prevent mouse wheel scrolling
+        }, { passive: false });
+
+        // Initial state on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            window.showMainMenuButtons(true);
+            window.showGameOverButtons(false);
+            window.showInGameControls(false);
+            window.showScoreboard(false);
+            // The p5.js setup will call loadPlayerName which then calls showNameInput(true)
+        });
+    </script>
+</body>
+</html>
