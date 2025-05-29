@@ -20,7 +20,7 @@ const INITIAL_GAME_SPEED = 3;
 const MAX_GAME_SPEED = 20;
 const GAME_SPEED_INCREMENT = 0.0025;
 
-const POWERUP_DURATION = 8000; // General constant, may be unused if specifics are always preferred
+const POWERUP_DURATION = 8000; 
 const WEAPON_SYSTEM_DURATION = 12000;
 const SPREAD_SHOT_DURATION = 10000;
 const RAPID_FIRE_DURATION = 7000;
@@ -77,7 +77,7 @@ let jetpackFuel = MAX_FUEL;
 let playerIsFlying = false;
 let playerCanShoot = true;
 let playerShootCooldown = 0;
-const PLAYER_SHOOT_COOLDOWN_TIME = 300;
+const PLAYER_SHOOT_COOLDOWN_TIME = 300; // Cooldown for manual shooting
 
 let gameSpeed = INITIAL_GAME_SPEED;
 let baseGameSpeed = INITIAL_GAME_SPEED;
@@ -94,6 +94,7 @@ let powerupInterval = POWERUP_REGULAR_INTERVAL;
 
 let weaponSystemActive = false;
 let currentWeaponMode = "STANDARD";
+let weaponSystemShootTimer = 0; // Timer for weapon system auto-fire
 
 let distanceTraveled = 0;
 let bossCycle = 0;
@@ -112,8 +113,8 @@ let userId = "anonymous";
 let isAuthReady = false;
 
 // --- Firebase Configuration ---
-const DEFAULT_APP_ID = "jetpack-7ced6"; // Default App ID if not provided by environment
-const DEFAULT_FIREBASE_CONFIG = { // Default Firebase config if not provided
+const DEFAULT_APP_ID = "jetpack-7ced6"; 
+const DEFAULT_FIREBASE_CONFIG = { 
   apiKey: "AIzaSyDkQJHGHZapGD8sKggskwz4kkQRwmr_Kh0",
   authDomain: "jetpack-7ced6.firebaseapp.com",
   projectId: "jetpack-7ced6",
@@ -148,35 +149,29 @@ let C_SKY_OVERCAST, C_SKY_HORIZON, C_BUILDING_DARK, C_BUILDING_LIGHT, C_RUBBLE_D
 let C_PILLAR_DARK, C_PILLAR_LIGHT;
 let C_SKIN_TONE, C_MUSTACHE_COLOR;
 let C_BLOOD_RED;
-let C_BANNER_BG_RED, C_BANNER_SYMBOL_BLACK, C_BANNER_CIRCLE_WHITE; // Specific banner colors
+let C_BANNER_BG_RED, C_BANNER_SYMBOL_BLACK, C_BANNER_CIRCLE_WHITE; 
 
 // Global function for drawing faux banner
 function drawFauxBanner(x, y, w, h) {
-  // Dark red banner background
   fill(C_BANNER_BG_RED);
-  rect(x, y, w, h, 2); // Small rounding for corners
+  rect(x, y, w, h, 2); 
 
-  // White circle
   fill(C_BANNER_CIRCLE_WHITE);
-  ellipse(x + w / 2, y + h / 2, w * 0.55); // Slightly larger circle for better visibility
+  ellipse(x + w / 2, y + h / 2, w * 0.55); 
 
-  // Stylized, connected angular emblem (not a swastika)
   let cx = x + w / 2;
   let cy = y + h / 2;
-  let s = w * 0.07; // Adjusted size for better proportion
+  let s = w * 0.07; 
 
   fill(C_BANNER_SYMBOL_BLACK);
   noStroke();
 
   push();
   translate(cx, cy);
-  rotate(PI / 4); // Suggestive 45° rotation
+  rotate(PI / 4); 
 
-  // Central element
-  rect(-s / 2, -s / 2, s, s);
+  rect(-s / 2, -s / 2, s, s); // Central element
 
-  // Arms - adjusted to be more distinct and less like a swastika
-  // Using thicker, shorter arms that clearly connect to the center
   let armLength = s * 1.2;
   let armWidth = s * 0.8;
 
@@ -190,75 +185,72 @@ function drawFauxBanner(x, y, w, h) {
 
 
 function defineColors() {
-  C_PLAYER = color(75, 83, 32); // Olive Drab
-  C_PLAYER_PROJECTILE = color(180, 160, 50); // Muted Yellow/Brass
-  C_ENEMY_DRONE = color(80, 85, 90); // Dark Grey Blue
-  C_ENEMY_INTERCEPTOR = color(60, 70, 75); // Darker Grey Blue
-  C_ENEMY_TURRET = color(90, 85, 80); // Brownish Grey
-  C_ENEMY_PROJECTILE = color(150, 60, 40); // Dull Red/Orange
+  C_PLAYER = color(75, 83, 32); 
+  C_PLAYER_PROJECTILE = color(180, 160, 50); 
+  C_ENEMY_DRONE = color(80, 85, 90); 
+  C_ENEMY_INTERCEPTOR = color(60, 70, 75); 
+  C_ENEMY_TURRET = color(90, 85, 80); 
+  C_ENEMY_PROJECTILE = color(150, 60, 40); 
 
-  C_OBSTACLE = color(150, 160, 170); // Light Grey Concrete
-  C_GROUND_DETAIL = color(60, 50, 45); // Dark Brown Earth
+  C_OBSTACLE = color(150, 160, 170); 
+  C_GROUND_DETAIL = color(60, 50, 45); 
 
-  C_POWERUP_COIN = color(184, 134, 11); // Dark Gold
-  C_POWERUP_FUEL = color(0, 100, 100); // Teal (unchanged)
-  C_POWERUP_SHIELD = color(40, 120, 50); // Muted Green
-  C_POWERUP_WEAPON = color(150, 150, 40); // Dark Yellow
-  C_POWERUP_SPREAD = color(150, 70, 0); // Burnt Orange
-  C_POWERUP_RAPID = color(255, 140, 0); // Bright Orange (stands out)
-  C_POWERUP_MULTIPLIER = color(200, 100, 0); // Dark Orange
-  C_POWERUP_MAGNET = color(100, 100, 150); // Muted Blue/Purple
-  C_POWERUP_SPEED = color(180, 120, 0); // Ochre
+  C_POWERUP_COIN = color(184, 134, 11); 
+  C_POWERUP_FUEL = color(0, 100, 100); 
+  C_POWERUP_SHIELD = color(40, 120, 50); 
+  C_POWERUP_WEAPON = color(150, 150, 40); 
+  C_POWERUP_SPREAD = color(150, 70, 0); 
+  C_POWERUP_RAPID = color(255, 140, 0); 
+  C_POWERUP_MULTIPLIER = color(200, 100, 0); 
+  C_POWERUP_MAGNET = color(100, 100, 150); 
+  C_POWERUP_SPEED = color(180, 120, 0); 
 
-  C_BOSS_TANK = color(75, 83, 32); // Olive Drab (like player)
-  C_BOSS_SHIP = color(60, 70, 75); // Dark Grey Blue
-  C_BOSS_FINAL = color(100, 90, 100); // Dark Purplish Grey
+  C_BOSS_TANK = color(75, 83, 32); 
+  C_BOSS_SHIP = color(60, 70, 75); 
+  C_BOSS_FINAL = color(100, 90, 100); 
 
-  C_PARTICLE_JET = color(180, 80, 0); // Orange/Red
+  C_PARTICLE_JET = color(180, 80, 0); 
   C_PARTICLE_EXPLOSION = [
-    color(150, 40, 0), color(120, 80, 0), color(100, 100, 20), color(80, 80, 80), // Oranges, Yellows, Greys
+    color(150, 40, 0), color(120, 80, 0), color(100, 100, 20), color(80, 80, 80), 
   ];
-  C_PARTICLE_IMPACT = color(100, 100, 100, 180); // Grey sparks
-  C_PARTICLE_EMBER = color(255, 100, 0, 150); // Flickering ember color
+  C_PARTICLE_IMPACT = color(100, 100, 100, 180); 
+  C_PARTICLE_EMBER = color(255, 100, 0, 150); 
 
-  C_TEXT_MAIN = color(220); // Off-white
-  C_TEXT_ACCENT = color(180, 160, 50); // Muted Yellow
-  C_TEXT_SCORE = color(200, 200, 100); // Pale Yellow
-  C_HUD_BG = color(20, 20, 20, 180); // Very Dark Grey, semi-transparent
+  C_TEXT_MAIN = color(220); 
+  C_TEXT_ACCENT = color(180, 160, 50); 
+  C_TEXT_SCORE = color(200, 200, 100); 
+  C_HUD_BG = color(20, 20, 20, 180); 
 
-  C_SKY_OVERCAST = color(60, 70, 80); // Greyish Blue Sky
-  C_SKY_HORIZON = color(80, 90, 100); // Lighter Greyish Blue Horizon
-  C_BUILDING_DARK = color(35, 35, 35); // Very Dark Grey for buildings
-  C_BUILDING_LIGHT = color(55, 50, 45); // Dark Brownish Grey for building details
-  C_RUBBLE_DARK = color(45, 40, 35); // Dark Brown/Grey Rubble
-  C_RUBBLE_LIGHT = color(65, 60, 55); // Lighter Brown/Grey Rubble
-  C_SMOKE_EFFECT = color(70, 70, 70, 50); // Base smoke color (grey, transparent)
-  C_FIRE_GLOW_STRONG = color(255, 100, 0, 30); // Distant fire glow (orange, transparent)
-  C_FIRE_GLOW_WEAK = color(200, 150, 0, 20);   // Embers/haze glow (yellow-orange, transparent)
+  C_SKY_OVERCAST = color(60, 70, 80); 
+  C_SKY_HORIZON = color(80, 90, 100); 
+  C_BUILDING_DARK = color(35, 35, 35); 
+  C_BUILDING_LIGHT = color(55, 50, 45); 
+  C_RUBBLE_DARK = color(45, 40, 35); 
+  C_RUBBLE_LIGHT = color(65, 60, 55); 
+  C_SMOKE_EFFECT = color(70, 70, 70, 50); 
+  C_FIRE_GLOW_STRONG = color(255, 100, 0, 30); 
+  C_FIRE_GLOW_WEAK = color(200, 150, 0, 20);   
 
-  C_PILLAR_DARK = color(50, 55, 60); // Dark Grey Pillar
-  C_PILLAR_LIGHT = color(70, 75, 80); // Lighter Grey Pillar Detail
+  C_PILLAR_DARK = color(50, 55, 60); 
+  C_PILLAR_LIGHT = color(70, 75, 80); 
 
   C_SKIN_TONE = color(200, 160, 120);
   C_MUSTACHE_COLOR = color(30, 30, 30);
-  C_BLOOD_RED = color(180, 30, 30); // For health bars, etc.
+  C_BLOOD_RED = color(180, 30, 30); 
 
-  // Banner specific colors
-  C_BANNER_BG_RED = color(110, 0, 0); // Dark, desaturated red
-  C_BANNER_SYMBOL_BLACK = color(0);   // Black for the symbol
-  C_BANNER_CIRCLE_WHITE = color(220); // Off-white for the circle (not stark white)
+  C_BANNER_BG_RED = color(110, 0, 0); 
+  C_BANNER_SYMBOL_BLACK = color(0);   
+  C_BANNER_CIRCLE_WHITE = color(220); 
 }
 
 
 window.preload = function() {
-  // Load sound assets
   bgMusic = loadSound('assets/background_music.mp3');
   jumpSound = loadSound('assets/jump.mp3');
   playerProjectileSound = loadSound('assets/player_projectile.mp3');
   enemyProjectileSound = loadSound('assets/projectile.mp3');
   objectDestroySound = loadSound('assets/object_destroy.mp3');
 
-  // Configure sound properties
   bgMusic.setVolume(0.4);
   bgMusic.setLoop(true);
   jumpSound.setVolume(0.7);
@@ -279,51 +271,48 @@ class BackgroundElement {
         this.y = y;
         this.w = w;
         this.h = h;
-        this.type = type; // 'building', 'pillar', 'rubble', 'static_wreck', 'banner_pole' (renamed for clarity)
+        this.type = type; 
         this.speedFactor = speedFactor;
         this.color1 = color1;
         this.color2 = color2 || color1;
         this.noiseOffsetX = random(1000); 
         this.noiseOffsetY = random(1000);
-        this.bannerSeed = random(100); // Seed for banner randomness per building
+        this.bannerSeed = random(100); 
 
-        this.wreckRotation = random(-0.15, 0.15); // For static wrecks (tanks)
-        this.emberTime = 0; // For rubble embers
+        this.wreckRotation = random(-0.15, 0.15); 
+        this.emberTime = 0; 
     }
 
     update() {
-        // Consistent deltaTime scaling
         this.x -= gameSpeed * this.speedFactor * (deltaTime / (1000 / 60));
 
-        if (this.x + this.w < -100) { // Increased margin before reset
-            this.x = SCREEN_WIDTH + random(100, 300); // Reset further off-screen for smoother transitions
-            this.bannerSeed = random(100); // Re-randomize banner seed
-            this.noiseOffsetX = random(1000); // Re-randomize noise offset for fire/smoke
+        if (this.x + this.w < -100) { 
+            this.x = SCREEN_WIDTH + random(100, 300); 
+            this.bannerSeed = random(100); 
+            this.noiseOffsetX = random(1000); 
             this.noiseOffsetY = random(1000);
 
-            // Re-randomize properties for variety on respawn, with slightly adjusted ranges
             if (this.type === 'building') {
-                this.h = random(SCREEN_HEIGHT * 0.35, SCREEN_HEIGHT * 0.75); // Slightly less extreme height variation
+                this.h = random(SCREEN_HEIGHT * 0.4, SCREEN_HEIGHT * 0.7); // Tighter range
                 this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h;
-                this.w = random(70, 180); // Slightly less extreme width variation
+                this.w = random(80, 160); // Tighter range
             } else if (this.type === 'pillar') {
                 this.h = random(SCREEN_HEIGHT * 0.25, SCREEN_HEIGHT * 0.55);
                 this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h;
                 this.w = random(25, 55);
             } else if (this.type === 'rubble') {
-                this.h = random(15, 45); // Rubble can be a bit taller
-                this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h; // Rubble is grounded
+                this.h = random(15, 45); 
+                this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h; 
                 this.w = random(40, 90);
-            } else if (this.type === 'static_wreck') { // Tank silhouette
+            } else if (this.type === 'static_wreck') { 
                 this.w = random(70, 110);
                 this.h = random(35, 55);
-                this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h + random(0,10); // Slightly embedded or on small mound
-                this.wreckRotation = random(-0.1, 0.1); // Less extreme rotation
-            } else if (this.type === 'banner_pole') { // Banners attached to poles (less common, more standalone)
-                this.w = random(40, 60); // Banner width
-                this.h = random(60, 100); // Banner height
-                this.y = random(SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.3); // Hanging higher
-                 // Pole height will be this.h + some extra
+                this.y = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h + random(0,10); 
+                this.wreckRotation = random(-0.1, 0.1); 
+            } else if (this.type === 'banner_pole') { 
+                this.w = random(40, 60); 
+                this.h = random(60, 100); 
+                this.y = random(SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.3); 
             }
         }
     }
@@ -334,13 +323,12 @@ class BackgroundElement {
             fill(this.color1); 
             rect(this.x, this.y, this.w, this.h);
 
-            // Jagged/broken top edge
             fill(this.color1); 
             beginShape();
             vertex(this.x, this.y);
             for (let i = 0; i <= 10; i++) {
                 let stepX = this.x + (this.w / 10) * i;
-                let stepY = this.y - noise(this.noiseOffsetX + i * 0.3) * this.h * 0.18; // Use noise for more natural broken edge
+                let stepY = this.y - noise(this.noiseOffsetX + i * 0.3) * this.h * 0.18; 
                 vertex(stepX, stepY);
             }
             vertex(this.x + this.w, this.y);
@@ -352,19 +340,18 @@ class BackgroundElement {
             for (let i = 0; i < random(2, 6); i++) { 
                 let spotX = this.x + random(this.w * 0.1, this.w * 0.8);
                 let spotY = this.y + random(this.h * 0.1, this.h * 0.8);
-                let spotW = random(this.w * 0.15, this.w * 0.35); // Windows/holes
+                let spotW = random(this.w * 0.15, this.w * 0.35); 
                 let spotH = random(this.h * 0.1, this.h * 0.25);
                 rect(spotX, spotY, spotW, spotH); 
                 
-                stroke(C_PILLAR_DARK); // Exposed rebar
+                stroke(C_PILLAR_DARK); 
                 strokeWeight(random(1,2));
                 if(random() < 0.6) line(spotX + random(spotW*0.2), spotY + random(spotH*0.2), spotX + spotW - random(spotW*0.2), spotY + spotH - random(spotH*0.2));
                 if(random() < 0.4) line(spotX + spotW - random(spotW*0.2), spotY + random(spotH*0.2), spotX + random(spotW*0.2), spotY + spotH - random(spotH*0.2));
                 noStroke();
             }
             
-            // Smoke/fire glow from some buildings
-            if (noise(this.noiseOffsetX + 100) < 0.4) { // Use noise for consistency
+            if (noise(this.noiseOffsetX + 100) < 0.4) { 
                 let glowX = this.x + this.w / 2;
                 let glowY = this.y - random(5,25); 
                 let flicker = noise(this.noiseOffsetY + frameCount * 0.05);
@@ -372,22 +359,17 @@ class BackgroundElement {
                 ellipse(glowX, glowY, this.w * (0.4 + flicker * 0.25), this.h * (0.15 + flicker * 0.15));
             }
 
-            // Integrate Faux Banner on buildings
-            // Use the bannerSeed for consistent banner presence per building instance until it resets
-            if (noise(this.bannerSeed) < 0.3) { // ~30% chance based on seed
-                let bannerW = this.w * 0.25; // Banner width relative to building
-                let bannerH = this.h * 0.4;  // Banner height relative to building
-                // Position banner on the building facade, slightly offset
-                let bannerX = this.x + this.w * 0.1 + noise(this.bannerSeed + 10) * (this.w * 0.5 - bannerW); // Random horizontal placement
-                let bannerY = this.y + this.h * 0.1 + noise(this.bannerSeed + 20) * (this.h * 0.4 - bannerH); // Random vertical placement
+            if (noise(this.bannerSeed) < 0.3) { 
+                let bannerW = this.w * 0.25; 
+                let bannerH = this.h * 0.4;  
+                let bannerX = this.x + this.w * 0.1 + noise(this.bannerSeed + 10) * (this.w * 0.5 - bannerW); 
+                let bannerY = this.y + this.h * 0.1 + noise(this.bannerSeed + 20) * (this.h * 0.4 - bannerH); 
                 
-                // Ensure banner is not too small
                 bannerW = max(20, bannerW); 
                 bannerH = max(30, bannerH);
 
                 drawFauxBanner(bannerX, bannerY, bannerW, bannerH);
             }
-
 
         } else if (this.type === 'pillar') {
             fill(this.color1);
@@ -416,18 +398,16 @@ class BackgroundElement {
              for(let i=0; i<random(1,3); i++){
                 rect(this.x + random(this.w*0.1, this.w*0.3), this.y + random(this.h*0.3, this.h*0.5), random(this.w*0.2, this.w*0.5), random(this.h*0.2, this.h*0.4), 1);
             }
-            // Small smoke plumes from rubble
             if (noise(this.noiseOffsetX + frameCount * 0.02) < 0.3) {
                 fill(C_SMOKE_EFFECT.levels[0], C_SMOKE_EFFECT.levels[1], C_SMOKE_EFFECT.levels[2], 20 + noise(this.noiseOffsetY + frameCount * 0.03) * 30);
                 ellipse(this.x + this.w/2 + random(-5,5), this.y - random(5,10), random(10,20), random(15,25));
             }
-            // Flickering embers
             this.emberTime += deltaTime;
-            if (this.emberTime > 100) { // Update embers periodically
+            if (this.emberTime > 100) { 
                 this.emberTime = 0;
-                if (random() < 0.2) { // Chance for an ember
+                if (random() < 0.2) { 
                     let emberX = this.x + random(this.w);
-                    let emberY = this.y + random(this.h * 0.5, this.h); // Near bottom of rubble
+                    let emberY = this.y + random(this.h * 0.5, this.h); 
                     let emberSize = random(2, 5);
                     let emberAlpha = 100 + noise(this.noiseOffsetX + frameCount * 0.1) * 155;
                     fill(C_PARTICLE_EMBER.levels[0], C_PARTICLE_EMBER.levels[1], C_PARTICLE_EMBER.levels[2], emberAlpha);
@@ -435,47 +415,36 @@ class BackgroundElement {
                 }
             }
 
-        } else if (this.type === 'static_wreck') { // Enhanced Tank Silhouette
+        } else if (this.type === 'static_wreck') { 
             push();
             translate(this.x + this.w / 2, this.y + this.h / 2);
             rotate(this.wreckRotation);
-            // Use a grey or olive color for tank silhouette
-            let tankColor = random() < 0.5 ? C_ENEMY_DRONE : C_BOSS_TANK; // Grey or Olive
+            let tankColor = random() < 0.5 ? C_ENEMY_DRONE : C_BOSS_TANK; 
             fill(tankColor);
             noStroke();
 
-            // Main Hull (more rectangular)
             rect(-this.w / 2, -this.h / 2 + this.h * 0.1, this.w, this.h * 0.7, 2); 
-            // Turret (more defined)
             rect(-this.w * 0.25, -this.h / 2 - this.h * 0.2, this.w * 0.5, this.h * 0.4, 1); 
-            // Barrel (longer, thinner)
             rect(0, -this.h / 2 - this.h * 0.1, this.w * 0.55, this.h * 0.15, 1); 
             
-            // Tracks/Wheels (simplified but distinct)
-            fill(lerpColor(tankColor, color(0), 0.3)); // Darker shade for tracks
-            rect(-this.w/2, this.h/2 - this.h*0.2, this.w, this.h*0.25, 2); // Continuous track base
+            fill(lerpColor(tankColor, color(0), 0.3)); 
+            rect(-this.w/2, this.h/2 - this.h*0.2, this.w, this.h*0.25, 2); 
             for(let i = -this.w/2 + this.w*0.1; i < this.w/2 - this.w*0.1; i += this.w*0.25){
                  ellipse(i, this.h/2 - this.h*0.075, this.w*0.15, this.w*0.15);
             }
             pop();
-        } else if (this.type === 'banner_pole') { // Standalone banner on a pole
-            // Pole
+        } else if (this.type === 'banner_pole') { 
             fill(C_PILLAR_DARK);
-            rect(this.x - 3, this.y - 10, 6, this.h + 20, 1); // Pole extends above and below banner slightly
-
-            // Draw the banner itself using the global function
-            // Position banner relative to its own (this.x, this.y) which is top-left of banner cloth
+            rect(this.x - 3, this.y - 10, 6, this.h + 20, 1); 
             drawFauxBanner(this.x, this.y, this.w, this.h);
         }
     }
 }
 
 
-let backgroundElements = []; // Combined array for all background elements for easier management
-
-
+let backgroundElements = []; 
 let bgOffset1 = 0;
-let smokeParticles = []; // For more dynamic smoke
+let smokeParticles = []; 
 
 
 window.setup = function() {
@@ -484,12 +453,11 @@ window.setup = function() {
   canvas.parent('game-container');
   pixelDensity(1);
   defineColors();
-  textFont('Oswald'); // Ensure font is set
+  textFont('Oswald'); 
   noiseSeed(Date.now()); 
   resetGame();
   window.currentScreen = "START";
 
-  // Initialize Firebase
   try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
@@ -506,7 +474,6 @@ window.setup = function() {
           } else {
             await signInAnonymously(auth);
           }
-          // Check if currentUser is available after sign-in attempts
           if (auth.currentUser) {
             userId = auth.currentUser.uid;
             console.log("Firebase: Signed in. UID:", userId);
@@ -525,7 +492,6 @@ window.setup = function() {
       if (typeof window.loadHighScores === 'function') window.loadHighScores();
       if (typeof window.loadPlayerName === 'function') window.loadPlayerName();
 
-      // This should now be called after auth is ready and playerName might be loaded
       if (typeof window.showNameInput === 'function') {
           window.showNameInput(true); 
       } else {
@@ -535,8 +501,7 @@ window.setup = function() {
   } catch (e) {
       console.error("Firebase initialization error:", e);
       isAuthReady = false; 
-      // Fallback if Firebase fails completely
-      if (typeof window.loadPlayerName === 'function') window.loadPlayerName(); // Load local name
+      if (typeof window.loadPlayerName === 'function') window.loadPlayerName(); 
        if (typeof window.showNameInput === 'function') window.showNameInput(true);
   }
 
@@ -564,6 +529,7 @@ window.resetGameValues = function() {
 
   weaponSystemActive = false;
   currentWeaponMode = "STANDARD";
+  weaponSystemShootTimer = 0; // Reset weapon system timer
   activePowerups = {};
   scoreMultiplier = 1;
 
@@ -586,22 +552,19 @@ window.resetGameValues = function() {
   
   scoreboardDisplayedAfterGameOver = false;
 
-  // Initialize background elements
-  backgroundElements = []; // Clear and repopulate
+  backgroundElements = []; 
   smokeParticles = []; 
   bgOffset1 = 0;
 
-  // Populate buildings (distant, slow)
-  for (let i = 0; i < 6; i++) { // Slightly more buildings
-      let bX = random(SCREEN_WIDTH * 0.1, SCREEN_WIDTH * 1.8) + i * (SCREEN_WIDTH / 3.5); // Stagger initial positions
-      let bH = random(SCREEN_HEIGHT * 0.35, SCREEN_HEIGHT * 0.75);
+  for (let i = 0; i < 6; i++) { 
+      let bX = random(SCREEN_WIDTH * 0.1, SCREEN_WIDTH * 1.8) + i * (SCREEN_WIDTH / 3.5); 
+      let bH = random(SCREEN_HEIGHT * 0.4, SCREEN_HEIGHT * 0.7); // Use tighter range
       let bY = SCREEN_HEIGHT - GROUND_Y_OFFSET - bH;
-      let bW = random(70, 180);
+      let bW = random(80, 160); // Use tighter range
       backgroundElements.push(new BackgroundElement(bX, bY, bW, bH, 'building', 0.15, C_BUILDING_DARK, C_BUILDING_LIGHT));
   }
 
-  // Populate pillars (mid-ground)
-  for (let i = 0; i < 8; i++) { // Slightly more pillars
+  for (let i = 0; i < 8; i++) { 
       let pX = random(SCREEN_WIDTH * 0.1, SCREEN_WIDTH * 1.5) + i * (SCREEN_WIDTH / 4);
       let pH = random(SCREEN_HEIGHT * 0.25, SCREEN_HEIGHT * 0.55);
       let pY = SCREEN_HEIGHT - GROUND_Y_OFFSET - pH;
@@ -609,17 +572,15 @@ window.resetGameValues = function() {
       backgroundElements.push(new BackgroundElement(pX, pY, pW, pH, 'pillar', 0.3, C_PILLAR_DARK, C_PILLAR_LIGHT));
   }
   
-  // Populate static wrecks (tanks) (mid-ground, slower than rubble)
-  for (let i = 0; i < 4; i++) { // More tanks
+  for (let i = 0; i < 4; i++) { 
       let wX = random(SCREEN_WIDTH * 0.2, SCREEN_WIDTH * 1.8) + i * (SCREEN_WIDTH / 2);
       let wW = random(70, 110);
       let wH = random(35, 55);
       let wY = SCREEN_HEIGHT - GROUND_Y_OFFSET - wH + random(0,10); 
-      backgroundElements.push(new BackgroundElement(wX, wY, wW, wH, 'static_wreck', 0.35, C_ENEMY_DRONE)); // Using drone color for greyish
+      backgroundElements.push(new BackgroundElement(wX, wY, wW, wH, 'static_wreck', 0.35, C_ENEMY_DRONE)); 
   }
 
-  // Populate rubble (foreground, fastest)
-  for (let i = 0; i < 20; i++) { // More rubble for destroyed feel
+  for (let i = 0; i < 20; i++) { 
       let rX = random(SCREEN_WIDTH * 0.05, SCREEN_WIDTH * 1.2) + i * (SCREEN_WIDTH / 6);
       let rH = random(15, 45);
       let rY = SCREEN_HEIGHT - GROUND_Y_OFFSET - rH;
@@ -627,46 +588,22 @@ window.resetGameValues = function() {
       backgroundElements.push(new BackgroundElement(rX, rY, rW, rH, 'rubble', 0.5, C_RUBBLE_DARK, C_RUBBLE_LIGHT));
   }
   
-  // Populate standalone banners on poles (less frequent, for variety)
   for (let i = 0; i < 2; i++) {
       let bannerX = random(SCREEN_WIDTH * 0.5, SCREEN_WIDTH * 2.0) + i * (SCREEN_WIDTH / 1.5);
-      let bannerPoleH = random(SCREEN_HEIGHT * 0.2, SCREEN_HEIGHT * 0.5); // Height of the pole part
-      let bannerActualH = random(60,100); // Height of the cloth
-      let bannerY = SCREEN_HEIGHT - GROUND_Y_OFFSET - bannerPoleH - bannerActualH + random(20,50) ; // Ensure pole is grounded, banner hangs from it
-      bannerY = max(SCREEN_HEIGHT * 0.1, bannerY); // Don't let it go too low
-      let bannerW = random(40, 60);
-      // The BackgroundElement's Y will be the top of the banner cloth. The pole is drawn relative to this.
-      // For a pole of height `poleTotalHeight` where banner hangs at `bannerY` of height `bannerActualH`,
-      // the pole starts at `bannerY - (poleTotalHeight - bannerActualH)` and ends at `bannerY + bannerActualH`.
-      // Or, if pole is grounded, its top is `SCREEN_HEIGHT - GROUND_Y_OFFSET - poleTotalHeight`.
-      // Let's make banner_pole's Y the top of the pole, and banner hangs from it.
-      let poleTopY = random(SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.3);
-      let poleHeight = random(80, 150);
-
-      // For 'banner_pole', this.x, this.y is top-left of banner cloth.
-      // this.w, this.h is banner cloth dimensions. Pole drawn relative.
-      // For simplicity, let's assume the 'banner_pole' type means the banner itself, and it implies a pole.
-      // The `drawFauxBanner` is called within `BackgroundElement.show()` for type 'building'.
-      // For 'banner_pole' type, we can call it directly or have specific logic.
-      // The current `BackgroundElement.show()` for 'banner_pole' draws a pole and then calls drawFauxBanner.
-      // So, the `y` here should be the top of the banner cloth.
+      let bannerActualH = random(60,100); 
       let bannerClothY = random(SCREEN_HEIGHT*0.15, SCREEN_HEIGHT*0.4);
+      let bannerW = random(40, 60);
       backgroundElements.push(new BackgroundElement(bannerX, bannerClothY, bannerW, bannerActualH, 'banner_pole', 0.25, C_PILLAR_DARK));
   }
 
-
-  // Initial smoke particles for atmospheric effect
-  for (let i = 0; i < 15; i++) { // More atmospheric smoke
+  for (let i = 0; i < 15; i++) { 
     smokeParticles.push(new Particle(
-        random(SCREEN_WIDTH), random(SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.6), // Wider vertical spread
-        C_SMOKE_EFFECT, random(70, 160), random(12000, 20000), // Slightly larger, longer lifetime
-        createVector(random(-0.1, 0.1) * gameSpeed * 0.05, random(-0.08, -0.2)), // Slower horizontal, stronger upward drift
-        0.995, 'ellipse' // Higher drag, very slow dissipation
+        random(SCREEN_WIDTH), random(SCREEN_HEIGHT * 0.05, SCREEN_HEIGHT * 0.4), // Spawn higher for atmospheric
+        C_SMOKE_EFFECT, random(70, 160), random(12000, 20000), 
+        createVector(random(-0.1, 0.1) * gameSpeed * 0.05, random(-0.08, -0.2)), 
+        0.995, 'ellipse' 
     ));
   }
-  // Sort background elements by speedFactor (descending) so faster elements are drawn on top (further back in array)
-  // Or ascending, so slower elements (further away) are drawn first.
-  // Slower elements (smaller speedFactor) should be drawn first (further back).
   backgroundElements.sort((a, b) => a.speedFactor - b.speedFactor);
 }
 
@@ -715,7 +652,6 @@ window.triggerPlayerShoot = function() {
 window.loadHighScores = function() {
     if (!isAuthReady || !db) {
         console.log("Firestore not ready, delaying loadHighScores.");
-        // Attempt to load from localStorage as a fallback? No, rules specify Firestore.
         return;
     }
     console.log("loadHighScores called. Current userId:", userId);
@@ -728,12 +664,11 @@ window.loadHighScores = function() {
         const fetchedScores = [];
         snapshot.forEach((doc) => {
             const data = doc.data();
-            if (data.score !== undefined && data.name && data.userId) { // Ensure all fields are present
+            if (data.score !== undefined && data.name && data.userId) { 
                 fetchedScores.push(data);
             }
         });
 
-        // Get the single highest score for each unique userId
         const uniqueUserHighScores = new Map();
         fetchedScores.forEach(entry => {
             const currentHighest = uniqueUserHighScores.get(entry.userId);
@@ -742,12 +677,11 @@ window.loadHighScores = function() {
             }
         });
 
-        // Convert map values to array, sort by score, and take top N
         let filteredScores = Array.from(uniqueUserHighScores.values());
-        filteredScores.sort((a, b) => b.score - a.score); // Sort descending by score
-        highScores = filteredScores.slice(0, MAX_HIGH_SCORES); // Get top N
+        filteredScores.sort((a, b) => b.score - a.score); 
+        highScores = filteredScores.slice(0, MAX_HIGH_SCORES); 
         
-        highScore = highScores.length > 0 ? highScores[0].score : 0; // Update overall high score
+        highScore = highScores.length > 0 ? highScores[0].score : 0; 
         
         console.log("Firestore: High scores updated:", highScores);
         if (typeof window.displayHighScores === 'function') {
@@ -778,7 +712,7 @@ window.saveHighScore = async function(newScore) {
             score: newScore,
             date: formattedDate,
             userId: userId, 
-            timestamp: serverTimestamp() // Use server timestamp for reliable ordering if needed later
+            timestamp: serverTimestamp() 
         });
         console.log("Firestore: Document written with ID: ", docRef.id, "Score:", newScore, "Player:", window.playerName, "UID:", userId);
     } catch (e) {
@@ -812,7 +746,6 @@ window.loadPlayerName = function() {
     if (storedName) {
         window.playerName = storedName;
     } else {
-        // Set a default name if nothing is stored
         window.playerName = "Recruit"; 
     }
     console.log("Loaded player name:", window.playerName);
@@ -830,7 +763,7 @@ window.savePlayerName = function(name) {
 
 window.deletePlayerName = function() {
     localStorage.removeItem(LOCAL_STORAGE_PLAYER_NAME_KEY);
-    window.playerName = "Recruit"; // Reset to default
+    window.playerName = "Recruit"; 
     console.log("Player name deleted. Reset to:", window.playerName);
     const nameInputField = document.getElementById('nameInputField');
     if (nameInputField) nameInputField.value = window.playerName;
@@ -856,7 +789,7 @@ class Player {
 
   update() {
     if (playerIsFlying) {
-        jetpackFuel -= FUEL_CONSUMPTION_RATE * (deltaTime / (1000/60)); // Scale fuel consumption
+        jetpackFuel -= FUEL_CONSUMPTION_RATE * (deltaTime / (1000/60)); 
         if (jetpackFuel <= 0) {
             jetpackFuel = 0;
             playerIsFlying = false; 
@@ -870,7 +803,7 @@ class Player {
                     this.y + this.h * 0.9,
                     C_PARTICLE_JET, 
                     random(6, 12), 
-                    random(15 * (1000/60), 25 * (1000/60)), // Lifetime in ms
+                    random(15 * (1000/60), 25 * (1000/60)), 
                     createVector(random(-0.5, 0.5), random(1, 3)), 
                     0.95 
                 )
@@ -878,15 +811,15 @@ class Player {
         }
     } else { 
       if (this.onGround) { 
-        jetpackFuel = min(MAX_FUEL, jetpackFuel + FUEL_RECHARGE_RATE * (deltaTime / (1000/60))); // Scale recharge
+        jetpackFuel = min(MAX_FUEL, jetpackFuel + FUEL_RECHARGE_RATE * (deltaTime / (1000/60))); 
       }
     }
 
     if (!playerIsFlying || jetpackFuel <= 0) {
-      this.vy += this.gravity * (deltaTime / (1000/60)); // Scale gravity
+      this.vy += this.gravity * (deltaTime / (1000/60)); 
     }
 
-    this.y += this.vy * (deltaTime / (1000/60)); // Scale movement
+    this.y += this.vy * (deltaTime / (1000/60)); 
 
     let groundLevel = SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h;
     if (this.y >= groundLevel) {
@@ -1007,8 +940,8 @@ class PlayerProjectile {
     }
   }
   update() {
-    this.x += this.vx * (deltaTime / (1000/60)); // Scale movement
-    this.y += this.vy * (deltaTime / (1000/60)); // Scale movement
+    this.x += this.vx * (deltaTime / (1000/60)); 
+    this.y += this.vy * (deltaTime / (1000/60)); 
   }
   show() {
     push(); 
@@ -1050,9 +983,9 @@ class EnemyProjectile {
     }
   }
   update() {
-    this.x += this.vx * (deltaTime / (1000/60)); // Scale movement
-    this.y += this.vy * (deltaTime / (1000/60)); // Scale movement
-    this.rotation += 0.1 * (deltaTime / (1000/60)); // Scale rotation
+    this.x += this.vx * (deltaTime / (1000/60)); 
+    this.y += this.vy * (deltaTime / (1000/60)); 
+    this.rotation += 0.1 * (deltaTime / (1000/60)); 
   }
   show() {
     push();
@@ -1113,7 +1046,7 @@ class Enemy {
     if (this.type === "DRONE" || this.type === "INTERCEPTOR") {
       let ySpeed = this.type === "INTERCEPTOR" ? 0.08 : 0.05;
       let yAmplitude = this.type === "INTERCEPTOR" ? 1.3 : 1.0;
-      this.y += sin(this.droneAngle + frameCount * ySpeed) * yAmplitude * (deltaTime / (1000/60)); // Scale sinusoidal movement
+      this.y += sin(this.droneAngle + frameCount * ySpeed) * yAmplitude * (deltaTime / (1000/60)); 
       this.y = constrain( this.y, this.h, SCREEN_HEIGHT - GROUND_Y_OFFSET - this.h * 2 ); 
     }
 
@@ -1402,8 +1335,8 @@ class Boss {
     if (!this.isActive) return; 
     this.updateActive(); 
     
-    this.vy += this.gravity * (deltaTime / (1000/60)); // Scale gravity
-    this.y += this.vy * (deltaTime / (1000/60)); // Scale movement
+    this.vy += this.gravity * (deltaTime / (1000/60)); 
+    this.y += this.vy * (deltaTime / (1000/60)); 
     if (this.r) { 
         this.y = constrain(this.y, this.r, height - GROUND_Y_OFFSET - this.r);
     } else { 
@@ -1454,7 +1387,7 @@ class BossTank extends Boss {
   }
   updateActive() {
     if(player) {
-        this.turretAngle = lerp( this.turretAngle, atan2( (player.y + player.h / 2) - (this.y + 25), (player.x + player.w / 2) - (this.x + this.w / 2 - 30) ), 0.03 * (deltaTime / (1000/60)) ); // Scale lerp
+        this.turretAngle = lerp( this.turretAngle, atan2( (player.y + player.h / 2) - (this.y + 25), (player.x + player.w / 2) - (this.x + this.w / 2 - 30) ), 0.03 * (deltaTime / (1000/60)) ); 
     }
     this.shootTimer -= deltaTime;
     if (this.shootTimer <= 0) {
@@ -1603,26 +1536,28 @@ function updateGameLogic() {
       if (playerShootCooldown <= 0) playerCanShoot = true;
   }
 
+  // Updated Weapon System Auto-fire with deltaTime
   if (activePowerups[POWERUP_TYPE.WEAPON_SYSTEM] > 0 && player) {
-    weaponSystemActive = true; 
-    let fireRate = currentWeaponMode === "SPREAD" ? 12 : 8; // Frames per shot
-    if (activePowerups[POWERUP_TYPE.RAPID_FIRE]) fireRate = currentWeaponMode === "SPREAD" ? 6 : 4;
-    
-    // Convert frame-based fire rate to time-based, considering deltaTime
-    // If target FPS is 60, fireRate of 12 frames = 12 * (1000/60) ms = 200ms
-    // This logic needs a timer, not frameCount % fireRate when using deltaTime for movement.
-    // For now, let's assume this is intended to be frame-based for simplicity of original logic.
-    // If issues arise, this should be converted to a time-based cooldown.
-    if (frameCount % fireRate === 0) { 
-      if (currentWeaponMode === "SPREAD") {
-        for (let i = -1; i <= 1; i++) playerProjectiles.push( new PlayerProjectile( player.x + player.w, player.y + player.h / 2, i * 0.2 ) );
-      } else {
-        playerProjectiles.push( new PlayerProjectile(player.x + player.w, player.y + player.h / 2) );
-      }
+    weaponSystemActive = true;
+    let fireIntervalMs = currentWeaponMode === "SPREAD" ? 200 : 133; // Approx 12 and 8 frames at 60fps -> ms
+    if (activePowerups[POWERUP_TYPE.RAPID_FIRE]) {
+        fireIntervalMs = currentWeaponMode === "SPREAD" ? 100 : 67; // Approx 6 and 4 frames at 60fps -> ms
+    }
+
+    weaponSystemShootTimer -= deltaTime;
+    if (weaponSystemShootTimer <= 0) {
+        if (currentWeaponMode === "SPREAD") {
+            for (let i = -1; i <= 1; i++) playerProjectiles.push( new PlayerProjectile( player.x + player.w, player.y + player.h / 2, i * 0.2 ) );
+        } else {
+            playerProjectiles.push( new PlayerProjectile(player.x + player.w, player.y + player.h / 2) );
+        }
+        weaponSystemShootTimer = fireIntervalMs; // Reset timer
     }
   } else {
-    weaponSystemActive = false; 
+    weaponSystemActive = false;
+    // weaponSystemShootTimer = 0; // Optional: reset timer when power-up ends
   }
+
 
   if ( millis() - lastObstacleTime > obstacleInterval && !boss && !bossApproaching ) {
     let oW = random(25, 60); let oH = random(40, 180); let oX = width;
@@ -1785,7 +1720,7 @@ function updateGameLogic() {
         smokeParticles.splice(i, 1);
         if (random() < 0.3) { 
              smokeParticles.push(new Particle(
-                random(SCREEN_WIDTH), SCREEN_HEIGHT - GROUND_Y_OFFSET - random(0, 50), 
+                random(SCREEN_WIDTH), random(SCREEN_HEIGHT * 0.05, SCREEN_HEIGHT * 0.4), // Spawn higher
                 C_SMOKE_EFFECT, random(60, 120), random(8000, 15000),
                 createVector(random(-0.05, 0.05) * gameSpeed * 0.1, random(-0.08, -0.18)),
                 0.99, 'ellipse'
@@ -1895,14 +1830,14 @@ class Particle {
 
   update() {
     this.vel.add(this.acc); 
-    this.vel.mult(this.drag); // Apply drag
+    this.vel.mult(this.drag); 
     this.x += this.vel.x * (deltaTime / (1000/60)); 
     this.y += this.vel.y * (deltaTime / (1000/60));
     this.acc.mult(0); 
 
     this.lifetime -= deltaTime;
     this.alpha = map(this.lifetime, 0, this.startLifetime, 0, 255);
-    this.size = map(this.lifetime, 0, this.startLifetime, 0, this.initialSize); // Shrink to 0
+    this.size = map(this.lifetime, 0, this.startLifetime, 0, this.initialSize); 
     if (this.size < 0) this.size = 0; 
   }
 
@@ -1920,7 +1855,7 @@ class Particle {
   finished() { return this.lifetime < 0; }
 }
 
-function createExplosion(x, y, count, baseColor, minLifetimeMs, maxLifetimeMs) { // Lifetimes in ms
+function createExplosion(x, y, count, baseColor, minLifetimeMs, maxLifetimeMs) { 
   for (let i = 0; i < count; i++) {
     let angle = random(TWO_PI);
     let speed = random(1, 6); 
@@ -1928,7 +1863,7 @@ function createExplosion(x, y, count, baseColor, minLifetimeMs, maxLifetimeMs) {
     let particleType = random();
     let pColor = Array.isArray(baseColor) ? baseColor[floor(random(baseColor.length))] : baseColor;
     let lifetime = random(minLifetimeMs, maxLifetimeMs);
-    let size = random(3,10); // Explosion particle sizes
+    let size = random(3,10); 
 
     if (particleType < 0.7) { 
         particles.push( new Particle( x + random(-5, 5), y + random(-5, 5), pColor, size, lifetime, vel, 0.9 ) );
@@ -2009,7 +1944,6 @@ function drawBackground() {
     rect(i + (frameCount * gameSpeed * 0.5 * (deltaTime / (1000/60))) % 20, SCREEN_HEIGHT - GROUND_Y_OFFSET + 5, 8, 3);
   }
 
-  // Draw background elements - they are already sorted by speedFactor in resetGameValues
   for (let bgEl of backgroundElements) { 
       bgEl.update(); 
       bgEl.show(); 
@@ -2017,8 +1951,8 @@ function drawBackground() {
   
   for (let sp of smokeParticles) { sp.show(); }
 
-  fill(C_SMOKE_EFFECT.levels[0], C_SMOKE_EFFECT.levels[1], C_SMOKE_EFFECT.levels[2], 25 + sin(frameCount * 0.01 + bgOffset1*0.1) * 10); // Even more subtle general haze
-  rect(0, SCREEN_HEIGHT * 0.15, SCREEN_WIDTH, SCREEN_HEIGHT * 0.55); // Adjusted height for haze
+  fill(C_SMOKE_EFFECT.levels[0], C_SMOKE_EFFECT.levels[1], C_SMOKE_EFFECT.levels[2], 25 + sin(frameCount * 0.01 + bgOffset1*0.1) * 10); 
+  rect(0, SCREEN_HEIGHT * 0.15, SCREEN_WIDTH, SCREEN_HEIGHT * 0.55); 
   bgOffset1 += gameSpeed * 0.02 * (deltaTime / (1000/60));
   if (bgOffset1 > TWO_PI) bgOffset1 -= TWO_PI;
 }
@@ -2057,8 +1991,6 @@ window.draw = function() {
       scoreboardDisplayedAfterGameOver = true; 
     }
   } else if (window.currentScreen === "SCOREBOARD") {
-    // Scoreboard display is handled by HTML/CSS, p5 just needs to trigger population
-    // if(typeof window.displayHighScores === 'function') window.displayHighScores(); // This is called when scoreboard is shown
     if(typeof window.showMainMenuButtons === 'function') window.showMainMenuButtons(false);
     if(typeof window.showGameOverButtons === 'function') window.showGameOverButtons(false);
     if(typeof window.showInGameControls === 'function') window.showInGameControls(false);
