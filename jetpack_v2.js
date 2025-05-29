@@ -1,9 +1,9 @@
-// === Jetpack Shooter with Bosses: WW2 Era Version ===
+// === Jetpack Shooter with Bosses: Enhanced Version ===
 
 // --- Firebase SDK Imports (now using ES Module syntax) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, query, limit, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
 // --- Game Configuration & Constants ---
@@ -16,74 +16,75 @@ const JETPACK_FORCE_MULTIPLIER = 0.85;
 const MAX_FUEL = 150;
 const FUEL_RECHARGE_RATE = 0.4;
 const FUEL_CONSUMPTION_RATE = 1.0;
-const INITIAL_GAME_SPEED = 3;
-const MAX_GAME_SPEED = 20;
-const GAME_SPEED_INCREMENT = 0.0025;
+const INITIAL_GAME_SPEED = 4;
+const MAX_GAME_SPEED = 20; // Increased max speed
+const GAME_SPEED_INCREMENT = 0.0008; // Significantly reduced speed increment for better playability
 
-const POWERUP_DURATION = 8000; 
+const POWERUP_DURATION = 8000;
 const WEAPON_SYSTEM_DURATION = 12000;
-const SPREAD_SHOT_DURATION = 10000;
-const RAPID_FIRE_DURATION = 7000;
-const SCORE_MULTIPLIER_DURATION = 10000;
-const COIN_MAGNET_DURATION = 10000;
-const SPEED_BURST_DURATION = 6000;
+const SPREAD_SHOT_DURATION = 10000; // Duration for spread shot if picked up independently
+const RAPID_FIRE_DURATION = 7000; // Added for rapid fire power-up
+const SCORE_MULTIPLIER_DURATION = 10000; // Added for score multiplier
+const COIN_MAGNET_DURATION = 10000; // Added for coin magnet
+const SPEED_BURST_DURATION = 6000; // Added for speed burst
 
-const OBSTACLE_START_INTERVAL = 1800;
-const OBSTACLE_MIN_INTERVAL = 450;
-const OBSTACLE_INTERVAL_DECREMENT_FACTOR = 0.98;
+const OBSTACLE_START_INTERVAL = 1400; // Adjusted
+const OBSTACLE_MIN_INTERVAL = 600; // Increased min interval to reduce density
+const OBSTACLE_INTERVAL_DECREMENT_FACTOR = 0.99;
 
-const POWERUP_REGULAR_INTERVAL = 3200;
+const POWERUP_REGULAR_INTERVAL = 3200; // More frequent regular powerups
 const POWERUP_REGULAR_MIN_INTERVAL = 1800;
 const POWERUP_BOSS_INTERVAL = 6000;
 const POWERUP_BOSS_MIN_INTERVAL = 3000;
 const POWERUP_INTERVAL_DECREMENT_FACTOR = 0.975;
 
-const ENEMY_START_INTERVAL = 8000;
-const ENEMY_MIN_INTERVAL = 1500;
-const ENEMY_INTERVAL_DECREMENT_FACTOR = 0.97;
+const ENEMY_START_INTERVAL = 4000; // Enemies appear a bit sooner
+const ENEMY_MIN_INTERVAL = 2000; // Increased min interval for enemies
+const ENEMY_INTERVAL_DECREMENT_FACTOR = 0.985;
 
-const BOSS_SPAWN_INTERVAL_MS = 60000; // 1 minute
+const BOSS_SPAWN_INTERVAL_MS = 60000; // Time until next boss spawns after previous is defeated
 
 // --- Scoreboard Constants ---
-const MAX_HIGH_SCORES = 5;
+const MAX_HIGH_SCORES = 5; // How many high scores to display
+// LOCAL_STORAGE_KEY is now only for player name, high scores are in Firestore
 const LOCAL_STORAGE_PLAYER_NAME_KEY = 'jetpackJumperPlayerName';
 
 // --- Game State Variables ---
 let player;
 let bgMusic;
 let jumpSound;
-let playerProjectileSound;
-let enemyProjectileSound;
+let playerProjectileSound; // Renamed for clarity
+let enemyProjectileSound; // Renamed for clarity
 let objectDestroySound;
 let playerProjectiles = [];
 let enemyProjectiles = [];
+let enemies = [];
 let obstacles = [];
 let powerups = [];
 let particles = [];
-let enemies = [];
 let boss = null;
 let bossApproaching = false;
 let pendingBoss = null;
 
 let activePowerups = {};
 let score = 0;
-let highScores = [];
-let highScore = 0;
+let highScores = []; // Array to store multiple high scores (fetched from Firestore)
+let highScore = 0; // This will now be the highest score loaded from Firestore
 
 let coinsCollectedThisRun = 0;
-let scoreMultiplier = 1;
+let scoreMultiplier = 1; // Added for score multiplier power-up
 
 let jetpackFuel = MAX_FUEL;
+let gameSpeed = INITIAL_GAME_SPEED;
+let baseGameSpeed = INITIAL_GAME_SPEED; // Base speed, affected by speed burst
 let playerIsFlying = false;
-let playerCanShoot = true;
+let playerCanShoot = true; // Added for manual shooting cooldown
 let playerShootCooldown = 0;
 const PLAYER_SHOOT_COOLDOWN_TIME = 300; // Cooldown for manual shooting
 
-let gameSpeed = INITIAL_GAME_SPEED;
-let baseGameSpeed = INITIAL_GAME_SPEED;
-
-window.currentScreen = "START";
+window.currentScreen = "START"; // Manages which screen is displayed
 let gamePaused = false;
+let gameWin = false; // New: Flag for game win condition
 
 let lastObstacleTime = 0;
 let lastPowerupTime = 0;
@@ -93,27 +94,34 @@ let obstacleInterval = OBSTACLE_START_INTERVAL;
 let powerupInterval = POWERUP_REGULAR_INTERVAL;
 
 let weaponSystemActive = false;
-let currentWeaponMode = "STANDARD";
+let weaponSystemTimeLeft = 0; // Renamed for clarity
+let currentWeaponMode = "STANDARD"; // 'STANDARD', 'SPREAD'
 let weaponSystemShootTimer = 0; // Timer for weapon system auto-fire
 
 let distanceTraveled = 0;
-let bossCycle = 0;
-let timeUntilNextBoss = BOSS_SPAWN_INTERVAL_MS;
+let bossCount = 0;
+let bossCycle = 0; // Tracks how many times bosses have been defeated (all 3 unique bosses)
+let timeUntilNextBoss = BOSS_SPAWN_INTERVAL_MS; // New: Timer for boss spawning
 
-let gameStartTime = 0;
+let gameStartTime = 0; // To track elapsed game time
 let gameElapsedTime = 0;
 
-window.playerName = "Player";
+// --- Player Name Variable ---
+window.playerName = "Player"; // Default player name, exposed to window
+
+// --- Flag for Scoreboard Display ---
 let scoreboardDisplayedAfterGameOver = false;
 
-// --- Firebase Variables ---
+// --- Firebase Variables (Moved to global scope) ---
 let db;
 let auth;
-let userId = "anonymous";
-let isAuthReady = false;
+let userId = "anonymous"; // Default anonymous user ID
+let isAuthReady = false; // Flag to ensure Firebase auth is ready before Firestore operations
 
-// --- Firebase Configuration ---
-const DEFAULT_APP_ID = "jetpack-7ced6"; 
+// --- Firebase Configuration (Moved to global scope) ---
+// IMPORTANT: Replace these placeholder values with your actual Firebase project settings.
+// You can find these in your Firebase Console under Project settings > Your apps.
+const DEFAULT_APP_ID = "my-jetpack-jumper-local"; // A unique identifier for your app/game (can be anything)
 const DEFAULT_FIREBASE_CONFIG = { 
   apiKey: "AIzaSyDkQJHGHZapGD8sKggskwz4kkQRwmr_Kh0",
   authDomain: "jetpack-7ced6.firebaseapp.com",
@@ -123,6 +131,7 @@ const DEFAULT_FIREBASE_CONFIG = {
   measurementId: "G-YCEJP443C4"
 };
 
+// Determine which config to use: provided by environment or default
 const appId = typeof __app_id !== 'undefined' ? __app_id : DEFAULT_APP_ID;
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : DEFAULT_FIREBASE_CONFIG;
 
@@ -134,22 +143,44 @@ const POWERUP_TYPE = {
   SHIELD: "shield",
   COIN_MAGNET: "coin_magnet",
   SPEED_BURST: "speed_burst",
-  WEAPON_SYSTEM: "weapon_system",
-  SPREAD_SHOT: "spread_shot",
-  RAPID_FIRE: "rapid_fire",
-  SCORE_MULTIPLIER: "score_multiplier",
+  WEAPON_SYSTEM: "weapon_system", // Activates basic weapon
+  SPREAD_SHOT: "spread_shot", // Modifies active weapon to spread
+  RAPID_FIRE: "rapid_fire", // New: Rapid fire
+  SCORE_MULTIPLIER: "score_multiplier", // New: Score multiplier
 };
 
-// --- Colors (WW2 Era Palette) ---
-let C_PLAYER, C_PLAYER_PROJECTILE, C_ENEMY_DRONE, C_ENEMY_INTERCEPTOR, C_ENEMY_TURRET, C_ENEMY_PROJECTILE;
-let C_OBSTACLE, C_GROUND_DETAIL, C_POWERUP_COIN, C_POWERUP_FUEL, C_POWERUP_SHIELD, C_POWERUP_WEAPON, C_POWERUP_SPREAD, C_POWERUP_RAPID, C_POWERUP_MULTIPLIER, C_POWERUP_MAGNET, C_POWERUP_SPEED;
-let C_BOSS_TANK, C_BOSS_SHIP, C_BOSS_FINAL, C_PARTICLE_JET, C_PARTICLE_EXPLOSION, C_PARTICLE_IMPACT, C_PARTICLE_EMBER;
-let C_TEXT_MAIN, C_TEXT_ACCENT, C_TEXT_SCORE, C_HUD_BG;
-let C_SKY_OVERCAST, C_SKY_HORIZON, C_BUILDING_DARK, C_BUILDING_LIGHT, C_RUBBLE_DARK, C_RUBBLE_LIGHT, C_SMOKE_EFFECT, C_FIRE_GLOW_STRONG, C_FIRE_GLOW_WEAK;
-let C_PILLAR_DARK, C_PILLAR_LIGHT;
-let C_SKIN_TONE, C_MUSTACHE_COLOR;
-let C_BLOOD_RED;
-let C_BANNER_BG_RED, C_BANNER_SYMBOL_BLACK, C_BANNER_CIRCLE_WHITE; 
+// --- Colors ---
+let C_PLAYER,
+  C_PLAYER_PROJECTILE,
+  C_ENEMY_DRONE,
+  C_ENEMY_INTERCEPTOR,
+  C_ENEMY_TURRET,
+  C_ENEMY_PROJECTILE;
+let C_OBSTACLE,
+  C_GROUND_DETAIL,
+  C_POWERUP_COIN,
+  C_POWERUP_FUEL,
+  C_POWERUP_SHIELD,
+  C_POWERUP_WEAPON,
+  C_POWERUP_SPREAD,
+  C_POWERUP_RAPID, // New
+  C_POWERUP_MULTIPLIER, // New
+  C_POWERUP_MAGNET, // New
+  C_POWERUP_SPEED; // New
+let C_BOSS_TANK,
+  C_BOSS_SHIP,
+  C_BOSS_FINAL,
+  C_PARTICLE_JET,
+  C_PARTICLE_EXPLOSION,
+  C_PARTICLE_IMPACT,
+  C_PARTICLE_EMBER; // New
+let C_TEXT_MAIN, C_TEXT_ACCENT, C_TEXT_SCORE, C_HUD_BG, C_SKY_TOP, C_SKY_BOTTOM;
+let C_DISTANT_PLANET1, C_DISTANT_PLANET2, C_NEBULA;
+let C_SKY_OVERCAST, C_SKY_HORIZON, C_BUILDING_DARK, C_BUILDING_LIGHT, C_RUBBLE_DARK, C_RUBBLE_LIGHT, C_SMOKE_EFFECT, C_FIRE_GLOW_STRONG, C_FIRE_GLOW_WEAK; // New background colors
+let C_PILLAR_DARK, C_PILLAR_LIGHT; // New
+let C_SKIN_TONE, C_MUSTACHE_COLOR; // New for player details
+let C_BLOOD_RED; // New
+let C_BANNER_BG_RED, C_BANNER_SYMBOL_BLACK, C_BANNER_CIRCLE_WHITE; // New for banner
 
 // Global function for drawing faux banner
 function drawFauxBanner(x, y, w, h) {
@@ -185,70 +216,81 @@ function drawFauxBanner(x, y, w, h) {
 
 
 function defineColors() {
-  C_PLAYER = color(75, 83, 32); 
-  C_PLAYER_PROJECTILE = color(180, 160, 50); 
-  C_ENEMY_DRONE = color(80, 85, 90); 
-  C_ENEMY_INTERCEPTOR = color(60, 70, 75); 
-  C_ENEMY_TURRET = color(90, 85, 80); 
-  C_ENEMY_PROJECTILE = color(150, 60, 40); 
+  // --- PLAYER & PROJECTILES (Player color and gun/helmet kept as requested) ---
+  C_PLAYER = color(75, 83, 32); // Olive Drab for uniform
+  C_PLAYER_PROJECTILE = color(180, 160, 50); // Muted yellow/orange for tracer fire
+  C_ENEMY_DRONE = color(80, 85, 90); // Darker grey for enemy
+  C_ENEMY_INTERCEPTOR = color(60, 70, 75); // Even darker, stealthier grey
+  C_ENEMY_TURRET = color(90, 85, 80); // Muted brown-grey for turret
+  C_ENEMY_PROJECTILE = color(150, 60, 40); // Darker orange-red for enemy fire
 
-  C_OBSTACLE = color(150, 160, 170); 
-  C_GROUND_DETAIL = color(60, 50, 45); 
+  // --- OBSTACLES ---
+  C_OBSTACLE = color(150, 160, 170); // Light grey for concrete/rubble
+  C_GROUND_DETAIL = color(60, 50, 45); // Dark earthy brown for ground details
 
-  C_POWERUP_COIN = color(184, 134, 11); 
-  C_POWERUP_FUEL = color(0, 100, 100); 
-  C_POWERUP_SHIELD = color(40, 120, 50); 
-  C_POWERUP_WEAPON = color(150, 150, 40); 
-  C_POWERUP_SPREAD = color(150, 70, 0); 
-  C_POWERUP_RAPID = color(255, 140, 0); 
-  C_POWERUP_MULTIPLIER = color(200, 100, 0); 
-  C_POWERUP_MAGNET = color(100, 100, 150); 
-  C_POWERUP_SPEED = color(180, 120, 0); 
+  // --- POWER-UPS (Keep distinct for visibility) ---
+  C_POWERUP_COIN = color(184, 134, 11); // Darker gold
+  C_POWERUP_FUEL = color(0, 100, 100); // Darker teal for fuel
+  C_POWERUP_SHIELD = color(40, 120, 50); // Darker green for shield
+  C_POWERUP_WEAPON = color(150, 150, 40); // Muted yellow for weapon
+  C_POWERUP_SPREAD = color(150, 70, 0); // Muted orange for spread shot
+  C_POWERUP_RAPID = color(255, 140, 0); // Darker orange for rapid fire
+  C_POWERUP_MULTIPLIER = color(200, 100, 0); // Muted orange for score multiplier
+  C_POWERUP_MAGNET = color(100, 100, 150); // Muted blue-grey for magnet
+  C_POWERUP_SPEED = color(180, 120, 0); // Muted yellow-orange for speed
 
-  C_BOSS_TANK = color(75, 83, 32); 
-  C_BOSS_SHIP = color(60, 70, 75); 
-  C_BOSS_FINAL = color(100, 90, 100); 
+  // --- BOSSES ---
+  C_BOSS_TANK = color(75, 83, 32); // Olive Drab like player
+  C_BOSS_SHIP = color(60, 70, 75); // Dark grey like interceptor
+  C_BOSS_FINAL = color(100, 90, 100); // Muted purple-grey for final boss
 
-  C_PARTICLE_JET = color(180, 80, 0); 
+  // --- PARTICLES ---
+  C_PARTICLE_JET = color(180, 80, 0); // Darker orange-red for jet exhaust
   C_PARTICLE_EXPLOSION = [
-    color(150, 40, 0), color(120, 80, 0), color(100, 100, 20), color(80, 80, 80), 
+    color(150, 40, 0), // Muted dark red
+    color(120, 80, 0), // Muted dark orange
+    color(100, 100, 20), // Muted dark yellow
+    color(80, 80, 80), // Dark grey smoke
   ];
-  C_PARTICLE_IMPACT = color(100, 100, 100, 180); 
-  C_PARTICLE_EMBER = color(255, 100, 0, 150); 
+  C_PARTICLE_IMPACT = color(100, 100, 100, 180); // Dark grey smoke/dust on impact
+  C_PARTICLE_EMBER = color(255, 100, 0, 150); // Glowing embers
 
-  C_TEXT_MAIN = color(220); 
-  C_TEXT_ACCENT = color(180, 160, 50); 
-  C_TEXT_SCORE = color(200, 200, 100); 
-  C_HUD_BG = color(20, 20, 20, 180); 
+  // --- TEXT & HUD ---
+  C_TEXT_MAIN = color(220); // Off-white
+  C_TEXT_ACCENT = color(180, 160, 50); // Muted yellow/khaki
+  C_TEXT_SCORE = color(200, 200, 100); // Light yellow for score
+  C_HUD_BG = color(20, 20, 20, 180); // Very dark, semi-transparent HUD background
 
-  C_SKY_OVERCAST = color(60, 70, 80); 
-  C_SKY_HORIZON = color(80, 90, 100); 
-  C_BUILDING_DARK = color(35, 35, 35); 
-  C_BUILDING_LIGHT = color(55, 50, 45); 
-  C_RUBBLE_DARK = color(45, 40, 35); 
-  C_RUBBLE_LIGHT = color(65, 60, 55); 
-  C_SMOKE_EFFECT = color(70, 70, 70, 50); 
-  C_FIRE_GLOW_STRONG = color(255, 100, 0, 30); 
-  C_FIRE_GLOW_WEAK = color(200, 150, 0, 20);   
+  // --- BACKGROUND (WW2 Vibes) ---
+  C_SKY_OVERCAST = color(60, 70, 80); // Dark, stormy grey
+  C_SKY_HORIZON = color(80, 90, 100); // Lighter, hazy grey-blue horizon
+  C_BUILDING_DARK = color(35, 35, 35); // Very dark grey for distant buildings
+  C_BUILDING_LIGHT = color(55, 50, 45); // Lighter brown-grey for distant buildings
+  C_RUBBLE_DARK = color(45, 40, 35); // Dark brown-grey for rubble
+  C_RUBBLE_LIGHT = color(65, 60, 55); // Lighter brown-grey for rubble
+  C_SMOKE_EFFECT = color(70, 70, 70, 50); // Semi-transparent grey for smoke
+  C_FIRE_GLOW_STRONG = color(255, 100, 0, 30); // Strong orange glow for fires
+  C_FIRE_GLOW_WEAK = color(200, 150, 0, 20); // Weaker yellow glow for fires
 
-  C_PILLAR_DARK = color(50, 55, 60); 
-  C_PILLAR_LIGHT = color(70, 75, 80); 
+  C_PILLAR_DARK = color(50, 55, 60); // Dark grey for pillars
+  C_PILLAR_LIGHT = color(70, 75, 80); // Lighter grey for pillars
 
-  C_SKIN_TONE = color(200, 160, 120);
-  C_MUSTACHE_COLOR = color(30, 30, 30);
-  C_BLOOD_RED = color(180, 30, 30); 
+  C_SKIN_TONE = color(200, 160, 120); // Skin tone
+  C_MUSTACHE_COLOR = color(30, 30, 30); // Mustache color
+  C_BLOOD_RED = color(180, 30, 30); // Blood red for game over/damage
 
-  C_BANNER_BG_RED = color(110, 0, 0); 
-  C_BANNER_SYMBOL_BLACK = color(0);   
-  C_BANNER_CIRCLE_WHITE = color(220); 
+  C_BANNER_BG_RED = color(110, 0, 0); // Dark red for banner background
+  C_BANNER_SYMBOL_BLACK = color(0); // Black for symbol
+  C_BANNER_CIRCLE_WHITE = color(220); // Off-white for circle
 }
 
 
+// Assign preload to the window object for p5.js to find it
 window.preload = function() {
   bgMusic = loadSound('assets/background_music.mp3');
   jumpSound = loadSound('assets/jump.mp3');
-  playerProjectileSound = loadSound('assets/player_projectile.mp3');
-  enemyProjectileSound = loadSound('assets/projectile.mp3');
+  playerProjectileSound = loadSound('assets/player_projectile.mp3'); // Renamed
+  enemyProjectileSound = loadSound('assets/projectile.mp3'); // Renamed
   objectDestroySound = loadSound('assets/object_destroy.mp3');
 
   bgMusic.setVolume(0.4);
@@ -443,8 +485,8 @@ class BackgroundElement {
 
 
 let backgroundElements = []; 
-let bgOffset1 = 0;
 let smokeParticles = []; 
+let bgOffset1 = 0;
 
 
 window.setup = function() {
@@ -539,10 +581,11 @@ window.resetGameValues = function() {
   score = 0;
   coinsCollectedThisRun = 0;
   distanceTraveled = 0;
-  bossCycle = 0;
-  if(player) player.shieldCharges = 0;
+  bossCount = 0;
+  bossCycle = 0; // Reset boss cycle
+  if(player) player.shieldCharges = 0; // Ensure shield charges are reset
 
-  timeUntilNextBoss = BOSS_SPAWN_INTERVAL_MS;
+  timeUntilNextBoss = BOSS_SPAWN_INTERVAL_MS; // Reset boss timer
   obstacleInterval = OBSTACLE_START_INTERVAL;
   powerupInterval = POWERUP_REGULAR_INTERVAL;
   enemySpawnInterval = ENEMY_START_INTERVAL;
@@ -551,6 +594,7 @@ window.resetGameValues = function() {
   gameElapsedTime = 0;
   
   scoreboardDisplayedAfterGameOver = false;
+  gameWin = false; // Reset game win flag
 
   backgroundElements = []; 
   smokeParticles = []; 
@@ -1085,7 +1129,7 @@ class Enemy {
       ellipse(this.x + this.w / 2, this.y + this.h * 0.5, this.w * 0.8, this.h * 0.8); 
       push(); 
       translate(this.x + this.w / 2, this.y + this.h * 0.5);
-      if (player) { 
+      if (player) { // Ensure player exists before calculating angle
         rotate(atan2((player.y + player.h / 2) - (this.y + this.h * 0.5), (player.x + player.w / 2) - (this.x + this.w / 2)));
       }
       fill(this.color.levels[0] - 20, this.color.levels[1] - 20, this.color.levels[2] - 20); 
@@ -1309,9 +1353,9 @@ class Boss {
     this.w = w; 
     this.h = h; 
     this.r = r; 
-    this.maxHealth = maxHealth * (1 + bossCycle * 0.25); 
+    this.maxHealth = maxHealth * (1 + bossCycle * 0.1); // Reduced health scaling per cycle
     this.health = this.maxHealth;
-    this.entrySpeed = entrySpeed * (1 + bossCycle * 0.1); 
+    this.entrySpeed = entrySpeed * (1 + bossCycle * 0.05); // Reduced entry speed scaling
     this.targetX = targetX; 
     this.color = colorVal;
     this.detailColor = lerpColor(this.color, color(0), 0.3);
@@ -1707,7 +1751,10 @@ function updateGameLogic() {
         }
       }
     }
-    if (hitPlayerOrObstacle || eProj.offscreen()) enemyProjectiles.splice(i, 1);
+    if (hitPlayerOrObstacle) {
+      enemyProjectiles.splice(i, 1);
+      if (window.currentScreen !== "GAME") break; // Break if game over was triggered
+    } else if (eProj.offscreen()) enemyProjectiles.splice(i, 1);
   }
 
   for (let i = particles.length - 1; i >= 0; i--) {
@@ -1738,26 +1785,41 @@ function updateGameLogic() {
       boss.update();
       if (boss.health <= 0) {
         createExplosion( boss.x + (boss.r || boss.w / 2), boss.y + (boss.r || boss.h / 2), 50, boss.color, 10 * (1000/60), 60 * (1000/60) );
-        boss = null; bossApproaching = false; pendingBoss = null;
+        boss = null; 
+        bossApproaching = false; 
+        pendingBoss = null;
         bossCycle++; 
         timeUntilNextBoss = BOSS_SPAWN_INTERVAL_MS; 
-        gameSpeed = min(MAX_GAME_SPEED, gameSpeed + 1.5); 
-        baseGameSpeed = gameSpeed / (activePowerups[POWERUP_TYPE.SPEED_BURST] > 0 ? 1.5 : 1); 
+        
+        // --- Difficulty Adjustment after Boss Defeat ---
+        gameSpeed = INITIAL_GAME_SPEED; // Reset game speed to initial after boss defeat
+        baseGameSpeed = INITIAL_GAME_SPEED; // Reset base speed too
+        obstacleInterval = OBSTACLE_START_INTERVAL; // Reset obstacle interval
+        enemySpawnInterval = ENEMY_START_INTERVAL; // Reset enemy interval
+
+        // --- Check for Win Condition ---
+        if (bossCycle >= 3) { // After defeating all 3 unique bosses (0, 1, 2)
+            gameWin = true;
+            window.currentScreen = "GAME_WIN"; // Transition to win screen
+        }
       }
     }
-  } else if (!bossApproaching) {
+  } else if (!bossApproaching && window.currentScreen === "GAME") { // Only spawn boss if game is active
     timeUntilNextBoss -= deltaTime;
     if (timeUntilNextBoss <= 0) {
         bossApproaching = true;
-        let bossType = random();
-        if (bossType < 0.4) pendingBoss = new BossTank();
-        else if (bossType < 0.8) pendingBoss = new BossShip();
+        let bossType = bossCycle % 3; // Cycle through the 3 unique bosses
+        if (bossType === 0) pendingBoss = new BossTank();
+        else if (bossType === 1) pendingBoss = new BossShip();
         else pendingBoss = new BossFinal();
     }
   } else if (bossApproaching && !boss && enemies.length === 0 && obstacles.length === 0) {
-    boss = pendingBoss;
-    bossApproaching = false;
-    pendingBoss = null;
+    // This block is for when boss is approaching but not yet active, and screen is clear
+    // This logic was causing glitches. The boss should be set when it enters.
+    // The `pendingBoss` is already set and updated in `updateBossLogic`'s first `if` block.
+    // This `else if` block can be removed or simplified if it's causing issues.
+    // For now, let's ensure it doesn't prematurely set `boss`.
+    // The `pendingBoss.hasEntered()` check handles the transition to `boss = pendingBoss;`
   }
 
   for (const type in activePowerups) {
@@ -1990,6 +2052,11 @@ window.draw = function() {
       if(typeof window.saveHighScore === 'function') window.saveHighScore(score);
       scoreboardDisplayedAfterGameOver = true; 
     }
+  } else if (window.currentScreen === "GAME_WIN") { // New: Win screen
+    drawWinScreen();
+    if(typeof window.showMainMenuButtons === 'function') window.showMainMenuButtons(false);
+    if(typeof window.showGameOverButtons === 'function') window.showGameOverButtons(true); // Show game over buttons to allow retry/main menu
+    if(typeof window.showInGameControls === 'function') window.showInGameControls(false);
   } else if (window.currentScreen === "SCOREBOARD") {
     if(typeof window.showMainMenuButtons === 'function') window.showMainMenuButtons(false);
     if(typeof window.showGameOverButtons === 'function') window.showGameOverButtons(false);
@@ -2019,28 +2086,79 @@ function drawGameOverScreen() {
   text("HIGH SCORE: " + highScore, width / 2, height / 2 + 20);
 }
 
+function drawWinScreen() {
+  fill(C_POWERUP_SHIELD); textAlign(CENTER, CENTER);
+  textSize(58); text("MISSION ACCOMPLISHED!", width / 2, height / 2 - 100);
+  fill(C_TEXT_MAIN); textSize(32);
+  text("You made it to the toilet!", width / 2, height / 2 - 30);
+
+  // Draw a simple toilet icon
+  fill(C_OBSTACLE); // Toilet bowl color
+  rect(width / 2 - 40, height / 2 + 20, 80, 60, 5); // Toilet base
+  ellipse(width / 2, height / 2 + 20, 90, 30); // Toilet seat top
+  fill(C_TEXT_MAIN); // Water color
+  ellipse(width / 2, height / 2 + 45, 50, 30); // Toilet water
+
+  fill(C_TEXT_ACCENT); textSize(20);
+  text("Relief achieved!", width / 2, height / 2 + 120);
+}
+
 window.keyPressed = function() {
-  if (key === " " && window.currentScreen === "GAME") {
-    playerIsFlying = true;
-    if(typeof window.triggerJumpSound === 'function') window.triggerJumpSound();
-  } else if (key === " " && window.currentScreen === "START") {
-    const startButton = document.getElementById('startButton');
-    if(startButton) startButton.click();
-  } else if (key === " " && window.currentScreen === "GAME_OVER") {
-     const retryButton = document.getElementById('retryButton');
-    if(retryButton) retryButton.click();
+  // --- Handle Spacebar (starts game AND jumps) ---
+  if (key === " ") {
+    // If the game is not started, spacebar starts it
+    if (window.currentScreen === "START") {
+      window.currentScreen = "GAME";
+      resetGameValues(); // Reset everything for a fresh start (this will hide name input)
+      // Call the global function from jetpack_v2.js to set flying state
+      setPlayerFlyingState(true);
+      // Call the global function to trigger jump sound
+      triggerJumpSound();
+    }
+    // If game is already running, and player wants to jump
+    else if (window.currentScreen === "GAME") { // Removed !gameOver
+      // Call the global function from jetpack_v2.js to set player flying state
+      setPlayerFlyingState(true);
+      // Call the global function to trigger jump sound
+      triggerJumpSound();
+    }
+  }
+
+  // --- Handle 'R' Key (resets game if game over or win screen) ---
+  if (window.currentScreen === "GAME_OVER" || window.currentScreen === "GAME_WIN") {
+    if (key === "r" || key === "R") {
+      resetGameValues(); // This will also reset scoreboardDisplayedAfterGameOver and gameWin
+      window.currentScreen = "GAME"; // Ensure game is marked as started for the new run
+      // Hide scoreboard if it's open
+      if (window.showScoreboard) {
+          window.showScoreboard(false);
+      }
+    }
   }
 }
-
+// Assign keyReleased to the window object for p5.js to find it
 window.keyReleased = function() {
-  if (key === " " && window.currentScreen === "GAME") {
-    playerIsFlying = false;
+  // Only stop flying if game is active and spacebar was released
+  if (window.currentScreen === "GAME" && key === " ") { // Removed !gameOver
+    // Call the centralized function to stop player flying
+    stopPlayerFlying();
   }
 }
-
 window.mousePressed = function() {
   if (window.currentScreen === "GAME" && mouseButton === LEFT && 
       mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
     if(typeof window.triggerPlayerShoot === 'function') window.triggerPlayerShoot();
   }
+}
+function collideRectRect(x, y, w, h, x2, y2, w2, h2) {
+  return x + w >= x2 && x <= x2 + w2 && y + h >= y2 && y <= y2 + h2;
+}
+function collideRectCircle(rx, ry, rw, rh, cx, cy, diameter) {
+  let tX = cx;
+  let tY = cy;
+  if (cx < rx) tX = rx;
+  else if (cx > rx + rw) tX = rx + rw;
+  if (cy < ry) tY = ry;
+  else if (cy > ry + rh) tY = ry + rh;
+  return dist(cx, cy, tX, tY) <= diameter / 2;
 }
